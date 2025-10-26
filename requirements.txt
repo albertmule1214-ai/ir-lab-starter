@@ -1,0 +1,4 @@
+# Minimal, beginner-friendly requirements
+tqdm
+pandas
+numpy

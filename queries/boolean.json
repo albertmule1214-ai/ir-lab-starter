@@ -1,0 +1,8 @@
+{
+  "queries": [
+    "python AND beer",
+    "\"machine learning\" OR \"data science\"",
+    "python AND NOT beginner",
+    "\"python meetup\""
+  ]
+}

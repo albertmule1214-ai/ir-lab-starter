@@ -1,0 +1,17 @@
+# Python virtual environment
+.venv/
+venv/
+
+# Pycache
+__pycache__/
+*.pyc
+
+# Data folders (large)
+data_raw/
+data_stage/
+index_json/
+results/
+
+# System files
+.DS_Store
+Thumbs.db
