@@ -1,8 +1,11 @@
 {
   "queries": [
-    "python AND beer",
-    "\"machine learning\" OR \"data science\"",
-    "python AND NOT beginner",
-    "\"python meetup\""
+    "(django AND unchained AND tarantino) OR (meetup AND thursday AND recipe AND exchange)",
+    "(boston AND (thursday OR friday) AND (music OR art)) AND NOT (sunday OR monday)",
+    "((boston AND music AND thursday) OR (boston AND music AND friday) OR (boston AND art AND thursday) OR (boston AND art AND friday)) AND NOT (sunday OR monday)",
+    "(boston AND (thursday OR friday) AND (music OR art) AND NOT sunday AND NOT monday)",
+    "((movie AND free AND tickets) OR (party AND welcome)) AND NOT (expensive OR canceled OR postponed)",
+    "((german AND recipe) OR (kaffeeklatsch AND exchange)) AND (share AND special AND favorite)",
+    "Rhode Island Italian Language Meetup Group"
   ]
 }

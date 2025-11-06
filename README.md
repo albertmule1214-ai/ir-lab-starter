@@ -1,158 +1,197 @@
-# IR 实验（新手友好）Python 开发流程指南
+# IR 实验起步包（文件结构与使用指南）
 
-本项目是一个“可一键跑通”的起步包。你可以在 Windows / macOS / Ubuntu 上按照下面的步骤操作，即使你没有命令行经验也没问题。我们尽量使用 VS Code 的图形界面来完成整个流程。
+本仓库提供一个“可一键跑通”的信息检索实验框架，覆盖：解析 XML → 分词 → 建立倒排索引 → 布尔/短语检索 → VSM 检索，并附带可选的跳表与词典压缩示例。
 
-> 你也可以直接在 VS Code 里双击并运行 `run_all.py`，它会按顺序完成：解析 XML → 分词 → 建索引 → 布尔/短语检索与 VSM 检索 → 输出结果。
-
----
-
-## 0. 安装准备（一次性）
-
-1) 安装 Python（推荐 3.11，也可 3.10/3.12）
-- Windows: 到 python.org 下载 Windows 安装包，安装时勾选 “Add Python to PATH”
-- macOS: 使用官方安装包，或 Homebrew：`brew install python@3.11`
-
-2) 安装 VS Code：到 code.visualstudio.com 下载并安装。首次打开后：
-- 打开扩展市场，搜索并安装 “Python” 扩展（Microsoft 出品）
-
-3) （可选）安装 Git：到 git-scm.com 下载（用于版本管理，非必需）
+> 最快上手：在 VS Code 中直接运行 `run_all.py`，自动依次执行所有步骤并在 `data_stage/`、`index_json/`、`results/` 生成结果。
 
 ---
 
-## 1. 打开工程与创建虚拟环境
+## 0. 环境准备（一次性）
 
-1) 将 zip 解压到你喜欢的位置（例如 `ir-lab-starter/`）
-2) 打开 VS Code，选择 “File → Open Folder...”，选中该文件夹
-3) 创建虚拟环境（两种方式，选其一）
-- 图形界面方式（推荐）
-  - 打开任意 `.py` 文件（例如 `run_all.py`）
-  - VS Code 右下角会提示选择解释器，点击并选择 “Python 3.11 (venv)”
-- 命令行方式
-  - VS Code 顶部菜单：Terminal → New Terminal，执行：
-    - Windows PowerShell
-      ```powershell
-      python -m venv .venv
-      .venv\Scripts\activate
-      python -m pip install -U pip
-      pip install -r requirements.txt
-      ```
-    - macOS / Ubuntu
-      ```bash
-      python3 -m venv .venv
-      source .venv/bin/activate
-      python -m pip install -U pip
-      pip install -r requirements.txt
-      ```
-
-> 每次重新打开工程，若看到“选择解释器”的提示，请选择 `.venv` 下的 Python。
+- 安装 Python（推荐 3.11）
+  - Windows: 从 python.org 安装，勾选 “Add Python to PATH”
+  - macOS: 官方安装包或 Homebrew：`brew install python@3.11`
+- 安装 VS Code 并安装 “Python” 扩展
+- 可选安装 Git（便于版本管理）
 
 ---
 
-## 2. 一键运行（最省事）
-- 在 VS Code 资源管理器中双击 `run_all.py` 打开
-- 点击右上角“运行”▶按钮（或 F5 选择 “Python File”）
-- 你会在 `data_stage/`、`index_json/`、`results/` 看到自动生成的文件和结果。项目可放入你自己的 XML 数据在 `data_raw/` 下进行练习。
+## 1. 打开工程与虚拟环境
+
+1) 将仓库解压/克隆到任意路径（例如 `ir-lab-starter/`）
+2) VS Code 打开该文件夹
+3) 创建虚拟环境并安装依赖（任选其一）
+   - VS Code 交互式：打开任意 `.py` 文件，按右下角提示选择/创建 `.venv` 解释器
+   - 终端命令：
+     - Windows PowerShell
+       ```powershell
+       python -m venv .venv
+       .venv\Scripts\activate
+       python -m pip install -U pip
+       pip install -r requirements.txt
+       ```
+     - macOS / Ubuntu
+       ```bash
+       python3 -m venv .venv
+       source .venv/bin/activate
+       python -m pip install -U pip
+       pip install -r requirements.txt
+       ```
+
+> 之后每次打开工程，若提示“选择解释器”，请选择 `.venv` 下的 Python。
 
 ---
 
-## 3. 分步运行（了解每一步在做什么）
+## 2. 一键运行（推荐）
 
-> 下面每一步都可以直接在 VS Code 里：右键脚本 → “Run Python File in Terminal”。
+- 在资源管理器中打开 `run_all.py`，点击“运行”或使用 F5（选择 Python File）
+- 依次执行：解析 XML → 分词 → 建索引 → 布尔/短语检索 → VSM 检索
+- 输出会生成在：`data_stage/`、`index_json/`、`results/`
 
-### 3.1 解析 XML → 统一成 JSONL
-- 运行 `src/parse_xml.py`
-- 它会读取 `data_raw/*.xml`，导出到 `data_stage/events.jsonl`
+---
 
-#### 3.1.1 解析字段（标签与下钻）
-- 标题：优先 `<title>`，否则 `<name>` 或 `//event/name`
-- 描述：`<description>`（保留原始 HTML 于 `description`；清洗后合并进 `text`）
-- 群组：`<group><name>` 或 `<group><who>`，以及 `<group><urlname>`
-- 场地：`<venue>` 下的 `name/address_1/city/state/country/lat/lon`
-- 主持人：`<event_hosts><event_hosts_item><member_name>`（可能多个）
-- 其他：`id/time/created/updated/status/yes_rsvp_count/maybe_rsvp_count/waitlist_count/headcount/event_url`
-- 可检索字段 `text` 自动合并：标题 + 描述(清洗) + 群组 + 场地 + 主持人
+## 3. 分步运行（理解每一步）
+
+以下每一步可在 VS Code 中右键脚本 → “Run Python File in Terminal”。
+
+### 3.1 解析 XML → 统一 JSONL
+- 运行：`src/parse_xml.py`
+- 输入：`data_raw/*.xml`
+- 输出：`data_stage/events.jsonl`
+- 字段抽取要点：
+  - 标题：优先 `<title>`，否则 `<name>` / `//event/name`
+  - 描述：`<description>`（保留原始 HTML 于 `description`；清洗后合入检索字段 `text`）
+  - 群组：`<group><name>` 或 `<group><who>`；另含 `<group><urlname>`
+  - 场地：`<venue>` 下 `name/address_1/city/state/country/lat/lon`
+  - 主持人：`<event_hosts_item><member_name>`（可能多个）
+  - 其他元数据：`id/time/created/updated/status/yes_rsvp_count/maybe_rsvp_count/waitlist_count/headcount/event_url`
+  - 可检索字段 `text` 由 标题 + 描述(清洗) + 群组 + 场地 + 主持人 组成
 
 ### 3.2 分词与规范化
-- 运行 `src/tokenize.py`，读取 `data_stage/events.jsonl`，输出 `data_stage/events.tokens.jsonl`
+- 运行：`src/tokenize.py`
+- 输入：`data_stage/events.jsonl`
+- 输出：`data_stage/events.tokens.jsonl`（含 term 与位置）
 
-### 3.3 建立倒排索引（含位置信息）
-- 运行 `src/build_index.py`，读取 tokens 文件，在 `index_json/` 写出：
-  - `lexicon.json`（词典：term 与文档频次 df 等）
-  - `postings.json`（倒排表：term → 文档列表、词频 tf、位置信息 pos）
+### 3.3 建立倒排索引（含位置信息 / 可选跳表）
+- 运行：`src/build_index.py [--skip STRATEGY]`
+  - `--skip` 可选：`none`（不加跳表）/ `sqrt`（默认，每 ⌊√n⌋ 加一跳）/ `k:<int>`（固定步长）/ `alpha:<float>`（比例）
+- 输入：`data_stage/events.tokens.jsonl`
+- 输出：`index_json/lexicon.json`（词典，含 df 与跳表元数据）、`index_json/postings.json`（倒排表：doc_id/tf/pos/skip）
 
-### 3.4 布尔与短语检索
-- 运行 `src/search_boolean.py`
-- 读取 `queries/boolean.json` 的示例查询
-- 支持 AND/OR/NOT 与双引号短语。短语用连续位置匹配（相邻词）。结果保存到 `results/boolean_results.json`
+### 3.4 布尔与短语检索（含计时与可选跳表 AND）
+- 运行：`src/search_boolean.py [--dict raw|block|front] [--use-skip]`
+- 输入：`queries/boolean.json`、索引文件
+- 输出：
+  - `results/boolean_results.json`（每个查询返回的 doc_id 列表）
+  - `results/execution_times.json`（总数、总耗时、均值、各查询耗时、最快/最慢统计）
+- 说明：
+  - 支持 AND / OR / NOT 与双引号短语（短语用位置连续匹配）
+  - `--use-skip`：当形如 `TERM AND TERM` 时使用有序交集 + 跳表优化
+  - `--dict`：仅用于“词存在性”的查找方式对比（原始/块存储/前端编码），不影响检索正确性
 
 ### 3.5 向量空间模型（VSM）检索
-- 运行 `src/search_vsm.py`
-- 基于索引计算 TF‑IDF 权重并做余弦相似度排序，输出 Top‑K 到 `results/vsm_results.json`
+- 运行：`src/search_vsm.py`
+- 输入：`queries/vsm.json`、索引文件
+- 输出：`results/vsm_results.json`（Top‑K 相似度排序，默认 Top‑10）
+- 说明：TF‑IDF 余弦相似度；离线预计算文档范数以加速查询
 
 ---
 
-## 4. 替换成你的真实数据
-1) 将老师给的四类 XML（如 Event/Group/RSVP/Member）放到 `data_raw/`（也可以先只放 Event）
-2) 重复第 3 章步骤（3.1~3.5），即可在真实数据上得到索引与检索结果
+## 4. 放入你的真实数据
 
-> 常见问题
-> - 如果 XML 很大，解析会慢：耐心等待，或分批放入 `data_raw/`
-> - 文本可以是英文/中英混合；默认采用简单英文分词。需要中文更好效果可替换分词逻辑
+1) 将老师提供的 XML（Event/Group/RSVP/Member 等）放入 `data_raw/`（可先只放 Event）
+2) 重复 3.1 ~ 3.5 步，得到索引与检索结果
 
----
-
-## 5. 下一步（与实验要求对齐的扩展点）
-- 跳表：在倒排列表里每 √n 建一个跳点，加速交集
-- 索引压缩：对 docID 差值（d‑gap）用可变字节 (VB) / Gamma 编码；词典做前缀压缩
-- 短语/窗口检索：本例已支持“相邻短语”，扩展为窗口 k 匹配很容易
-- 评测：统计耗时、索引大小；保存到 `results/metrics.json` 并画图（可自行添加）
+常见问题：
+- XML 很大时解析会慢：耐心等待，或分批放入 `data_raw/`
+- 文本可为英文/中英混合；当前示例为简单英文分词。若需更好中文效果，可替换 `src/tokenize.py` 中的分词逻辑
 
 ---
 
-## 6. 目录说明
+## 5. 目录结构（文件 → 步骤对照）
+
 ```
 ir-lab-starter/
-├─ data_raw/                  # 放你的 XML 数据（可先放示例）
-├─ data_stage/                # 解析/分词后的中间结果（自动生成）
-├─ index_json/                # 简易索引（JSON 版，便于阅读与调试）
+├─ data_raw/                    # 你的 XML 数据（输入）
+├─ data_stage/                  # 解析/分词中间结果（自动生成）
+│  ├─ events.jsonl              # ← 3.1 输出
+│  └─ events.tokens.jsonl       # ← 3.2 输出
+├─ index_json/                  # 简易 JSON 索引（便于阅读与调试）
+│  ├─ lexicon.json              # ← 3.3 词典（含 df/跳表元数据）
+│  ├─ postings.json             # ← 3.3 倒排表（含 tf/pos/可选 skip）
+│  ├─ lexicon.block.dict        # ← 7 块存储字典（可选）
+│  ├─ lexicon.block.idx         # ← 7 块存储索引（可选）
+│  └─ lexicon.front.dict        # ← 7 前端编码字典（可选）
 ├─ queries/
-│  └─ boolean.json            # 布尔/短语检索的示例查询
-├─ results/                   # 检索与评测结果
+│  ├─ boolean.json              # 布尔/短语检索示例查询
+│  └─ vsm.json                  # VSM 检索示例查询
+├─ results/                     # 检索与评测结果（自动生成）
+│  ├─ boolean_results.json      # ← 3.4 输出
+│  ├─ execution_times.json      # ← 3.4 耗时统计
+│  ├─ vsm_results.json          # ← 3.5 输出
+│  └─ dict_compression_sizes.json # ← 7 压缩体积对比
 ├─ src/
-│  ├─ parse_xml.py
-│  ├─ tokenize.py
-│  ├─ build_index.py
-│  ├─ search_boolean.py
-│  ├─ search_vsm.py
-│  ├─ compress_lexicon.py     # 词典压缩（按块存储 + 前端编码）
-│  └─ utils.py
-├─ run_all.py                 # 一键跑通脚本
-└─ requirements.txt
+│  ├─ parse_xml.py              # ← 3.1 解析 XML
+│  ├─ tokenize.py               # ← 3.2 分词
+│  ├─ build_index.py            # ← 3.3 建索引（--skip 可选）
+│  ├─ search_boolean.py         # ← 3.4 布尔/短语检索（--dict/--use-skip）
+│  ├─ search_vsm.py             # ← 3.5 VSM 检索
+│  ├─ compress_lexicon.py       # ← 7 词典压缩（块存储 + 前端编码）
+│  └─ utils.py                  # 公共工具（路径/JSON 读写）
+├─ run_all.py                   # 一键串行执行 3.1→3.5
+└─ requirements.txt             # 依赖清单
 ```
 
+备注（临时/调试脚本）：仓库可能包含 `tmp_test_parse.py`、`tmp_update_sizes.py` 之类本地测试用脚本，非实验必需，可忽略或自行删除。
+
 ---
 
-## 7. 词典压缩（按块存储 + 前端编码）
-- 运行：`python src/compress_lexicon.py [block_size]`
-  - 例如：`python src/compress_lexicon.py 16`
+## 6. 可选扩展：词典压缩与跳表
+
+### 6.1 词典压缩（按块存储 + 前端编码）
+
+- 运行：`python src/compress_lexicon.py [block_size]`（如 `16`）
 - 输入：`index_json/lexicon.json`
 - 输出：
-  - `index_json/lexicon.block.dict` 与 `index_json/lexicon.block.idx`（按块存储）
-  - `index_json/lexicon.front.dict`（前端编码 / front‑coding）
-  - 统计报表：`results/dict_compression_sizes.json`（包含原始与压缩后大小对比，以及与整个索引合并后的总体节省率）
+  - `index_json/lexicon.block.dict` + `index_json/lexicon.block.idx`
+  - `index_json/lexicon.front.dict`
+  - 统计：`results/dict_compression_sizes.json`（原始与压缩后大小 + 与整套索引合并后的总体节省率）
+- 说明：词典压缩通常显著缩小 `lexicon.json`，但整体索引大小常由 `postings.json` 主导。进一步压缩可实现“倒排压缩”（docID d‑gap + VB/Gamma，位置差分等）。
 
-说明：字典压缩对 `lexicon.json` 的体积有显著效果，但整体索引大小通常仍由 `postings.json` 主导。如需进一步降低整体大小，可继续实现“倒排压缩”（docID d‑gap + VB/Gamma，位置差分等）。
+### 6.2 跳表（Skip Pointers）
+
+- 在 `build_index.py` 通过 `--skip` 指定策略（默认 `sqrt`）
+- 在 `search_boolean.py` 加 `--use-skip`，对 `TERM AND TERM` 使用有序交集 + 跳表加速
 
 ---
 
-## 8. 编码与显示说明（避免“中文乱码”）
-- 本 README 使用 UTF‑8 编码。如果在 Windows 的 PowerShell 中查看出现乱码，可尝试：
-  - 在 VS Code 右下角选择“Reopen with Encoding...”，选择 “UTF‑8”，然后 “Save with Encoding... → UTF‑8（或 UTF‑8 with BOM）”
-  - PowerShell 中设置输出编码：
-    ```powershell
-    chcp 65001
-    $OutputEncoding = [Console]::OutputEncoding = [Text.UTF8Encoding]::new()
-    ```
+## 7. 编码与显示（避免中文乱码）
 
-祝学习顺利！如果你想把索引换成工业级（如 Lucene / Pyserini），可以在这个起步包的基础上逐步替换对应模块。
+- 本仓库使用 UTF‑8。若在 Windows PowerShell 看到乱码：
+  ```powershell
+  chcp 65001
+  $OutputEncoding = [Console]::OutputEncoding = [Text.UTF8Encoding]::new()
+  ```
+- `src/search_boolean.py` 运行时已尽量强制 UTF‑8 输出；如仍异常，可在 VS Code 右下角用“Reopen with Encoding…”强制为 UTF‑8 并保存。
 
+---
+
+## 8. 常用命令示例
+
+```bash
+# 解析 → 分词 → 建索引（默认 sqrt 跳表）
+python src/parse_xml.py
+python src/tokenize.py
+python src/build_index.py --skip sqrt
+
+# 布尔/短语检索（启用跳表 AND，使用 block 压缩词典查存在）
+python src/search_boolean.py --dict block --use-skip
+
+# VSM 检索（Top-10）
+python src/search_vsm.py
+
+# 词典压缩（以 16 为块大小），并查看压缩体积对比
+python src/compress_lexicon.py 16
+```
+
+祝学习顺利！若要逐步替换为工业级方案（如 Lucene / Pyserini），可在此起步包基础上替换对应模块并对照现有输出进行验证。
