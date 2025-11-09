@@ -8,9 +8,6 @@ __pycache__/
 
 # Data folders (large)
 data_raw/
-data_stage/
-index_json/
-results/
 
 # System files
 .DS_Store
